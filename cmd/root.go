@@ -55,6 +55,8 @@ var rootCmd = &cobra.Command{
 				fmt.Println("Please provide a valid process id for event 5")
 				cmd.Help()
 			}
+		case 6:
+			events.DriverLoaded()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
