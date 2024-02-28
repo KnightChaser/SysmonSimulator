@@ -52,7 +52,7 @@ var rootCmd = &cobra.Command{
 			if pid > 0 {
 				events.ProcessTerminate(pid)
 			} else {
-				fmt.Println("Please provide a valid process id for event 5")
+				fmt.Println("Please provide a valid process id for event 5(ProcessTerminate)")
 				cmd.Help()
 			}
 		case 6:
@@ -63,6 +63,13 @@ var rootCmd = &cobra.Command{
 			events.CreateRemoteThread()
 		case 9:
 			events.RawAccessRead()
+		case 10:
+			if pid > 0 {
+				events.ProcessAccessed(pid)
+			} else {
+				fmt.Println("Please provide a valid process id for event 10(ProcessAccessed)")
+				cmd.Help()
+			}
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
@@ -79,6 +86,6 @@ func Execute() {
 func init() {
 	rootCmd.Flags().UintP("eid", "e", 10000, "Generate a specific event which is specified by the event id")
 
-	// Add the --pid option for ProcessTerminate event
-	rootCmd.Flags().Uint32P("pid", "p", 0, "Specify the process id for ProcessTerminate(EID 5) event")
+	// Add the --pid option for ProcessTerminate or ProcessAccessed event
+	rootCmd.Flags().Uint32P("pid", "p", 0, "Specify the process id for ProcessTerminate(EID 5)/ProcessAccessed(EID 10) event")
 }
