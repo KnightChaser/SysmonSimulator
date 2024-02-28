@@ -63,6 +63,8 @@ func runSysmonEventSimulation(eid uint) {
 		events.ProcessCreate()
 	case 2:
 		events.FileCreationTimeChanged()
+	case 3:
+		events.NetworkConnect()
 	default:
 		fmt.Println("Please provide a valid event id")
 	}
