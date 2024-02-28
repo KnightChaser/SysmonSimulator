@@ -8,7 +8,6 @@ import (
 )
 
 func ProcessAccessed(pid uint32) {
-	log.Printf("Event 10: Process Accessed by PID: %d", pid)
 
 	// Open the target process
 	processHandle, err := kernel32.OpenProcess(
