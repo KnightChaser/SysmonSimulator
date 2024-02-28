@@ -65,6 +65,8 @@ func runSysmonEventSimulation(eid uint) {
 		events.FileCreationTimeChanged()
 	case 3:
 		events.NetworkConnect()
+	case 4:
+		fmt.Println("Event 4 is for \"Sysmon Service State Changed\", which is unable to artificially simulate")
 	default:
 		fmt.Println("Please provide a valid event id")
 	}
