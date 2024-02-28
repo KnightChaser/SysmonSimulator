@@ -37,11 +37,26 @@ var rootCmd = &cobra.Command{
 	Long:  `A sysmon event simulator that can be used to simulate sysmon events for testing and development purposes.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		eid, _ := cmd.Flags().GetUint("eid")
-		if eid > 0 {
-			runSysmonEventSimulation(eid)
-		} else {
+		pid, _ := cmd.Flags().GetUint32("pid")
+
+		switch eid {
+		case 1:
+			events.ProcessCreate()
+		case 2:
+			events.FileCreationTimeChanged()
+		case 3:
+			events.NetworkConnect()
+		case 4:
+			fmt.Println("Event 4 is for \"Sysmon Service State Changed\", which is unable to artificially simulate")
+		case 5:
+			if pid > 0 {
+				events.ProcessTerminate(pid)
+			} else {
+				fmt.Println("Please provide a valid process id for event 5")
+				cmd.Help()
+			}
+		default:
 			fmt.Println("Please provide a valid event id")
-			cmd.Help()
 		}
 	},
 }
@@ -54,20 +69,8 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().UintP("eid", "e", 1, "Generate a specific event which is specified by the event id")
-}
+	rootCmd.Flags().UintP("eid", "e", 10000, "Generate a specific event which is specified by the event id")
 
-func runSysmonEventSimulation(eid uint) {
-	switch eid {
-	case 1:
-		events.ProcessCreate()
-	case 2:
-		events.FileCreationTimeChanged()
-	case 3:
-		events.NetworkConnect()
-	case 4:
-		fmt.Println("Event 4 is for \"Sysmon Service State Changed\", which is unable to artificially simulate")
-	default:
-		fmt.Println("Please provide a valid event id")
-	}
+	// Add the --pid option for ProcessTerminate event
+	rootCmd.Flags().Uint32P("pid", "p", 0, "Specify the process id for ProcessTerminate(EID 5) event")
 }
