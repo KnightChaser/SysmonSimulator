@@ -58,9 +58,12 @@ func init() {
 }
 
 func runSysmonEventSimulation(eid uint) {
-	if eid == 1 {
+	switch eid {
+	case 1:
 		events.ProcessCreate()
-	} else {
-		fmt.Println("The given event id is not supported. Please try again with a valid event id.")
+	case 2:
+		events.FileCreationTimeChanged()
+	default:
+		fmt.Println("Please provide a valid event id")
 	}
 }
