@@ -76,6 +76,8 @@ var rootCmd = &cobra.Command{
 			events.CreateRegistryKey()
 		case 13:
 			events.RegistryValueSet()
+		case 14:
+			events.RegistryObjectRenamed()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
