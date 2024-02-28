@@ -57,6 +57,8 @@ var rootCmd = &cobra.Command{
 			}
 		case 6:
 			events.DriverLoaded()
+		case 7:
+			events.ImageLoaded()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
