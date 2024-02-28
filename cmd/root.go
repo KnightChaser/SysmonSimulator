@@ -59,6 +59,8 @@ var rootCmd = &cobra.Command{
 			events.DriverLoaded()
 		case 7:
 			events.ImageLoaded()
+		case 8:
+			events.CreateRemoteThread()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
