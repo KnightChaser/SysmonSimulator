@@ -74,6 +74,8 @@ var rootCmd = &cobra.Command{
 			events.FileCreated()
 		case 12:
 			events.CreateRegistryKey()
+		case 13:
+			events.RegistryValueSet()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
