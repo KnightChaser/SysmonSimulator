@@ -61,6 +61,8 @@ var rootCmd = &cobra.Command{
 			events.ImageLoaded()
 		case 8:
 			events.CreateRemoteThread()
+		case 9:
+			events.RawAccessRead()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
