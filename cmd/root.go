@@ -70,6 +70,8 @@ var rootCmd = &cobra.Command{
 				fmt.Println("Please provide a valid process id for event 10(ProcessAccessed)")
 				cmd.Help()
 			}
+		case 11:
+			events.FileCreated()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
