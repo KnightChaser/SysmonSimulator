@@ -96,6 +96,8 @@ var rootCmd = &cobra.Command{
 			events.PipeConnected()
 		case 19:
 			events.WmiEventFilterActivityDetected(executableAbsoluteDirPath)
+		case 20:
+			events.WmiEventConsumerActivityDetected(executableAbsoluteDirPath)
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
