@@ -7,20 +7,21 @@ import (
 	"unsafe"
 )
 
-var (
-	modKernel32                = syscall.NewLazyDLL("kernel32.dll")
-	modKernel32CreateNamedPipe = modKernel32.NewProc("CreateNamedPipeW")
-)
-
-const (
-	PIPE_ACCESS_DUPLEX       = 0x00000003
-	FILE_FLAG_OVERLAPPED     = 0x40000000
-	PIPE_TYPE_BYTE           = 0x00000000
-	PIPE_WAIT                = 0x00000000
-	PIPE_UNLIMITED_INSTANCES = 255
-)
-
 func PipeCreated() {
+
+	var (
+		modKernel32                = syscall.NewLazyDLL("kernel32.dll")
+		modKernel32CreateNamedPipe = modKernel32.NewProc("CreateNamedPipeW")
+	)
+
+	const (
+		PIPE_ACCESS_DUPLEX       = 0x00000003
+		FILE_FLAG_OVERLAPPED     = 0x40000000
+		PIPE_TYPE_BYTE           = 0x00000000
+		PIPE_WAIT                = 0x00000000
+		PIPE_UNLIMITED_INSTANCES = 255
+	)
+
 	pipeName := "\\\\.\\pipe\\KnightChaser-" + utilities.GenerateRandomHex(10)
 	pipeNameUTF16Ptr, _ := syscall.UTF16PtrFromString(pipeName)
 	var pipeSecurityAttributes syscall.SecurityAttributes
