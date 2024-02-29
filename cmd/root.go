@@ -53,7 +53,7 @@ var rootCmd = &cobra.Command{
 				events.ProcessTerminate(pid)
 			} else {
 				fmt.Println("Please provide a valid process id for event 5(ProcessTerminate)")
-				cmd.Help()
+				_ = cmd.Help()
 			}
 		case 6:
 			events.DriverLoaded()
@@ -68,7 +68,7 @@ var rootCmd = &cobra.Command{
 				events.ProcessAccessed(pid)
 			} else {
 				fmt.Println("Please provide a valid process id for event 10(ProcessAccessed)")
-				cmd.Help()
+				_ = cmd.Help()
 			}
 		case 11:
 			events.FileCreated()
@@ -78,6 +78,8 @@ var rootCmd = &cobra.Command{
 			events.RegistryValueSet()
 		case 14:
 			events.RegistryObjectRenamed()
+		case 15:
+			events.FileStreamCreated()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
