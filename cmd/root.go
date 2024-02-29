@@ -84,6 +84,8 @@ var rootCmd = &cobra.Command{
 			fmt.Println("Event 16 is for \"Sysmon Configuration Change\", which is unable to artificially simulate")
 		case 17:
 			events.PipeCreated()
+		case 18:
+			events.PipeConnected()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
