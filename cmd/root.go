@@ -25,7 +25,9 @@ package cmd
 import (
 	"SysmonSimulator/cmd/events"
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -38,6 +40,12 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		eid, _ := cmd.Flags().GetUint("eid")
 		pid, _ := cmd.Flags().GetUint32("pid")
+		executableAbsoluteFilePath, err := os.Executable()
+		executableAbsoluteDirPath := filepath.Dir(executableAbsoluteFilePath)
+		if err != nil {
+			log.Panicf("[-] Error getting the absolute file path of the executable: %v", err)
+			return
+		}
 
 		switch eid {
 		case 1:
@@ -86,6 +94,8 @@ var rootCmd = &cobra.Command{
 			events.PipeCreated()
 		case 18:
 			events.PipeConnected()
+		case 19:
+			events.WmiEventFilterActivityDetected(executableAbsoluteDirPath)
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
