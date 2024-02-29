@@ -80,6 +80,8 @@ var rootCmd = &cobra.Command{
 			events.RegistryObjectRenamed()
 		case 15:
 			events.FileStreamCreated()
+		case 16:
+			fmt.Println("Event 16 is for \"Sysmon Configuration Change\", which is unable to artificially simulate")
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
