@@ -111,6 +111,10 @@ var rootCmd = &cobra.Command{
 			log.Printf("[-] Not implemented")
 		case 26:
 			events.FileDeleted()
+		case 27:
+			log.Printf("[-] Event 27 is for \"FileBlockExecutable\", which is unable to artificially simulate unless you manually configure Sysmon. Please manually simulate the situation.")
+		case 28:
+			log.Printf("[-] Event 28 is for \"FileBlockShredding\", which is unable to artificially simulate unless you manually configure Sysmon. Please manually simulate the situation.")
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
