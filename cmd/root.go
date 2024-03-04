@@ -108,7 +108,8 @@ var rootCmd = &cobra.Command{
 		case 24:
 			log.Printf("[-] Event 24 is for \"ClipboardChanged\", which is unable to artificially simulate unless you manually configure Sysmon. Please manually simulate the situation.")
 		case 25:
-			log.Printf("[-] Not implemented")
+			// log.Printf("[-] Not implemented")
+			events.ProcessTempering()
 		case 26:
 			events.FileDeleted()
 		case 27:
