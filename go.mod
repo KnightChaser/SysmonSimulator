@@ -10,7 +10,6 @@ require (
 
 require (
 	github.com/0xrawsec/golang-utils v1.3.0 // indirect
-	github.com/hillu/go-ntdll v0.0.0-20230408164318-f8894bfa00af // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 )
