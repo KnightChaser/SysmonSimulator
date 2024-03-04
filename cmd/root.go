@@ -107,6 +107,10 @@ var rootCmd = &cobra.Command{
 			log.Printf("[-] Event 23 is for \"FileDelete\", which is unable to artificially simulate unless you manually configure Sysmon. Substitued for EID 26.")
 		case 24:
 			log.Printf("[-] Event 24 is for \"ClipboardChanged\", which is unable to artificially simulate unless you manually configure Sysmon. Please manually simulate the situation.")
+		case 25:
+			log.Printf("[-] Not implemented")
+		case 26:
+			events.FileDeleted()
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
