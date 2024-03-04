@@ -40,6 +40,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		eid, _ := cmd.Flags().GetUint("eid")
 		pid, _ := cmd.Flags().GetUint32("pid")
+		targetHost, _ := cmd.Flags().GetString("targetHost")
 		executableAbsoluteFilePath, err := os.Executable()
 		executableAbsoluteDirPath := filepath.Dir(executableAbsoluteFilePath)
 		if err != nil {
@@ -100,6 +101,8 @@ var rootCmd = &cobra.Command{
 			events.WmiEventConsumerActivityDetected(executableAbsoluteDirPath)
 		case 21:
 			events.WmiEventConsumerToFilterActivityDetected(executableAbsoluteDirPath)
+		case 22:
+			events.DnsQuery(targetHost)
 		default:
 			fmt.Println("Please provide a valid event id")
 		}
@@ -118,4 +121,7 @@ func init() {
 
 	// Add the --pid option for ProcessTerminate or ProcessAccessed event
 	rootCmd.Flags().Uint32P("pid", "p", 0, "Specify the process id for ProcessTerminate(EID 5)/ProcessAccessed(EID 10) event")
+
+	// Add the --targetHost option for DnsQuery event
+	rootCmd.Flags().StringP("targetHost", "t", "8.8.8.8", "Specify the target host for DnsQuery(EID 22) event")
 }
