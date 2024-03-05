@@ -192,7 +192,7 @@ type PIMAGE_SECTION_HEADER *IMAGE_SECTION_HEADER
 
 // ----------------------------
 
-func ProcessTempering() {
+func ProcessTampering() {
 
 	// create the replaced executable process
 	var (
