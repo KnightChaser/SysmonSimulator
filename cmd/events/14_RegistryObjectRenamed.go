@@ -4,7 +4,8 @@ import (
 	"SysmonSimulator/cmd/utilities"
 	"fmt"
 	"log"
-	"os/exec"
+	"syscall"
+	"unsafe"
 
 	"golang.org/x/sys/windows/registry"
 )
@@ -28,16 +29,24 @@ func RegistryObjectRenamed() {
 		return
 	}
 
-	// Set a new registry value via Powershell command
-	targetRegistryHKeyNameNew := "KnightChaser-E14"
-	cmd := exec.Command("powershell", "-command", fmt.Sprintf("Rename-Item -Path HKCU:\\%s -NewName %s", targetRegistryHKeyName, targetRegistryHKeyNameNew))
-	err = cmd.Run()
-	if err != nil {
+	// Set a new registry value via Powershell command via direct call to RegRenameKey()@advapi32.dll
+	var (
+		advapi32DLL                          = syscall.NewLazyDLL("advapi32.dll")
+		advapi32DLLRegRenameKey              = advapi32DLL.NewProc("RegRenameKey")
+		targetRegistryHKeyNameNew            = "KnightChaser-SysmonEx-E14"
+		targetRegistryHKeyNameUTF16Ptr, _    = syscall.UTF16PtrFromString(targetRegistryHKeyName)
+		targetRegistryHKeyNameNewUTF16Ptr, _ = syscall.UTF16PtrFromString(targetRegistryHKeyNameNew)
+	)
+	_, _, err = advapi32DLLRegRenameKey.Call(
+		uintptr(uint32(targetRegistryHive)),
+		uintptr(unsafe.Pointer(targetRegistryHKeyNameUTF16Ptr)),
+		uintptr(unsafe.Pointer(targetRegistryHKeyNameNewUTF16Ptr)))
+	if err != syscall.Errno(0) {
 		log.Panicf("[-] Error while renaming registry key: %v\n", err)
 		return
+	} else {
+		log.Printf("[+] Registry key renamed: %v -> %v\n", targetRegistryHKeyName, targetRegistryHKeyNameNew)
 	}
-
-	log.Printf("[+] Registry key renamed: %v -> %v\n", targetRegistryHKeyName, targetRegistryHKeyNameNew)
 
 	// Clean up the registry key
 	err = utilities.DeleteRegistryKey(targetRegistryHive, fmt.Sprintf("Software\\Microsoft\\Windows\\CurrentVersion\\Run\\%s", targetRegistryHKeyNameNew))
