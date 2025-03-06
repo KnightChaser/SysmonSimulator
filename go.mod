@@ -1,11 +1,12 @@
 module SysmonSimulator
 
 go 1.21.5
+toolchain go1.23.7
 
 require (
 	github.com/0xrawsec/golang-win32 v1.0.14
 	github.com/spf13/cobra v1.8.1
-	golang.org/x/sys v0.29.0
+	golang.org/x/sys v0.31.0
 )
 
 require (
